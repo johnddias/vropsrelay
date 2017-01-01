@@ -3,6 +3,7 @@ import requests
 import logging
 import re
 import sys
+import time
 
 token = ""
 user = "admin"
@@ -26,7 +27,7 @@ def GetToken(user, passwd, host):
             }
         response = requests.request("POST", url, data=payload, headers=headers, verify=0)
         return response.text
-    else:
+    elif token["validity"] < time.time():
         url = "https://" + host + "/suite-api/api/versions"
         headers = {
             'authorization': "vRealizeOpsToken " + token["token"],
@@ -41,10 +42,11 @@ def GetToken(user, passwd, host):
             'content-type': "application/json",
             }
             response = requests.request("POST", url, data=payload, headers=headers, verify=0)
-            print response.text
             return response.text
-
-
+        else:
+            return json.dumps(token)
+    else:
+        return json.dumps(token)
 
 def GetResourceStatus(name,host):
     global token
@@ -62,15 +64,46 @@ def GetResourceStatus(name,host):
     response_parsed = json.loads(response.text)
     return response_parsed
 
+def GetActiveAlerts(badge,reskind,host):
+    global token
+    print token
+    token = json.loads(GetToken(user,passwd,host))
+    url = "https://" + host + "/suite-api/api/alerts/query"
+
+    headers = {
+        'authorization': "vRealizeOpsToken " + token["token"],
+        'accept': "application/json",
+        'content-type': "application/json"
+    }
+
+    querypayload = {
+        'resource-query': {
+            'resourceKind': [reskind]
+        },
+        'activeOnly': True,
+        'alertCriticality': ["CRITICAL","IMMEDIATE","WARNING","INFORMATION"],
+        'alertImpact': [badge]
+    }
+
+    response = requests.request("POST", url, headers=headers, json=querypayload, verify=0)
+    response_parsed = json.loads(response.text)
+    return response_parsed
+
 @app.route("/<NAME>", methods=['GET'])
 def ResourceStatusReport(NAME=None):
     statusInfo = GetResourceStatus(NAME,host)
     resp = jsonify(**statusInfo), 200
     return(resp)
 
+@app.route("/alerts/<BADGE>/<RESOURCEKIND>", methods=['GET'])
+def ActiveAlertsQuery(BADGE=None, RESOURCEKIND=None):
+    alertsQuery = GetActiveAlerts(BADGE,RESOURCEKIND,host)
+    resp = jsonify(**alertsQuery), 200
+    return(resp)
+
 def main(PORT):
     # Configure logging - overwrite on every start
-    logging.basicConfig(filename='li_webhook_shim.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+    logging.basicConfig(filename='vropsrelay.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
 
     # stdout
     root = logging.getLogger()
