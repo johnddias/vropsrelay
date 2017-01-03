@@ -6,9 +6,10 @@ import sys
 import time
 
 token = ""
+#CONFIGURE CREDENTIALS AND FQDN/IP for vR Ops API
 user = "admin"
-passwd = "VMware1!"
-host = "10.140.50.30"
+passwd = "password"
+host = "x.x.x.x"
 
 # Define if you want to leverage SSL
 SSLCERT = ''
