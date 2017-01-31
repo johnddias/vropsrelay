@@ -27,7 +27,7 @@ def GetToken(user, passwd, host):
             }
         response = requests.request("POST", url, data=payload, headers=headers, verify=0)
         return response.text
-    elif token["validity"] < time.time():
+    elif int(token["validity"])/1000 < time.time():
         url = "https://" + host + "/suite-api/api/versions"
         headers = {
             'authorization': "vRealizeOpsToken " + token["token"],
